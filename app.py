@@ -10,7 +10,7 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import datetime
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 CORS(app)
@@ -66,7 +66,6 @@ def home():
 def register():
     # Get the user data from the request
     data = request.get_json()
-    print("data", data)
 
     # Extracting values from the JSON body
     name = data.get('name')
@@ -103,6 +102,30 @@ def register():
 
     return jsonify({"success": True, "message": "User registered successfully."}), 201
 
+
+@app.route("/login", methods=["POST"])
+def login():
+    # Get the user data from the request
+    data = request.get_json()
+
+    # Extracting values from the JSON body
+    email = data.get('email')
+    password = data.get('password')
+
+    # Basic validation
+    if not email or not password:
+        return jsonify({"success": False, "message": "Email and password are required."}), 400
+
+    # Check if the user exists in the database
+    user = users_collection.find_one({"email": email})
+    if not user:
+        return jsonify({"success": False, "message": "Email not registered."}), 400
+    
+    # Check if the password matches
+    if not check_password_hash(user['password'], password):
+        return jsonify({"success": False, "message": "Incorrect password."}), 400
+
+    return jsonify({"success": True, "message": "Login successful."}), 200
 
 @app.route('/signup', methods=['POST'])
 def signup():
