@@ -1,4 +1,4 @@
-'use client'
+import re;
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from datetime import datetime, timedelta
@@ -6,10 +6,11 @@ from pymongo import MongoClient
 from dotenv import load_dotenv
 import os
 import pytz
-import random
+import random,ssl
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 CORS(app)
@@ -60,6 +61,49 @@ def generate_otp():
 @app.route('/')
 def home():
     return "Hello, Flask on Vercel!"
+#app register
+
+@app.route("/register", methods=["POST"])
+def register():
+    # Get the user data from the request
+    data = request.get_json()
+    print("data",data)
+    
+    # Extracting values from the JSON body
+    name = data.get('name')
+    email = data.get('email')
+    password = data.get('password')
+
+    # Basic validation
+    if not name or not email or not password:
+        return jsonify({"success": False, "message": "All fields are required."}), 400
+
+    # Validate email format
+    email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+    if not re.match(email_regex, email):
+        return jsonify({"success": False, "message": "Invalid email format."}), 400
+    
+    # Check if the user already exists in the database
+    existing_user = users_collection.find_one({"email": email})
+    if existing_user:
+        return jsonify({"success": False, "message": "Email already registered."}), 400
+    
+    # Hash the password
+    hashed_password = generate_password_hash(password, method='sha256')
+
+    # Create a new user document
+    new_user = {
+        "name": name,
+        "email": email,
+        "password": hashed_password,
+        "created_at": datetime.datetime.utcnow()
+    }
+
+    # Insert the new user into the database
+    users_collection.insert_one(new_user)
+
+    return jsonify({"success": True, "message": "User registered successfully."}), 201
+
 
 @app.route('/signup', methods=['POST'])
 def signup():
