@@ -125,7 +125,7 @@ def login():
     if not check_password_hash(user['password'], password):
         return jsonify({"success": False, "message": "Incorrect password."}), 400
 
-    return jsonify({"success": True, "message": "Login successful."}), 200
+    return jsonify({"success": True, "message": "Login successful.","user":user}), 200
 
 @app.route('/signup', methods=['POST'])
 def signup():
