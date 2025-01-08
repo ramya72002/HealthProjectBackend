@@ -1,7 +1,6 @@
 import re;
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-from datetime import datetime, timedelta
 from pymongo import MongoClient
 from dotenv import load_dotenv
 import os
@@ -10,7 +9,8 @@ import random,ssl
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from werkzeug.security import generate_password_hash, check_password_hash
+import datetime
+from werkzeug.security import generate_password_hash
 
 app = Flask(__name__)
 CORS(app)
@@ -61,14 +61,13 @@ def generate_otp():
 @app.route('/')
 def home():
     return "Hello, Flask on Vercel!"
-#app register
-
+#appregister
 @app.route("/register", methods=["POST"])
 def register():
     # Get the user data from the request
     data = request.get_json()
-    print("data",data)
-    
+    print("data", data)
+
     # Extracting values from the JSON body
     name = data.get('name')
     email = data.get('email')
@@ -89,7 +88,7 @@ def register():
         return jsonify({"success": False, "message": "Email already registered."}), 400
     
     # Hash the password
-    hashed_password = generate_password_hash(password, method='sha256')
+    hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
 
     # Create a new user document
     new_user = {
@@ -258,4 +257,4 @@ def get_records():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=80)
+    app.run(debug=True, host='0.0.0.0', port=80)
