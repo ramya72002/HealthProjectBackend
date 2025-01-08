@@ -120,12 +120,20 @@ def login():
     user = users_collection.find_one({"email": email})
     if not user:
         return jsonify({"success": False, "message": "Email not registered."}), 400
-    
+
     # Check if the password matches
     if not check_password_hash(user['password'], password):
         return jsonify({"success": False, "message": "Incorrect password."}), 400
 
-    return jsonify({"success": True, "message": "Login successful.","user":user}), 200
+    # Remove sensitive data from the response
+    user_data = {
+        "id": str(user['_id']),
+        "name": user['name'],
+        "email": user['email'],
+        "created_at": user.get('created_at')  # Include other non-sensitive fields if necessary
+    }
+
+    return jsonify({"success": True, "message": "Login successful.", "user": user_data}), 200
 
 @app.route('/signup', methods=['POST'])
 def signup():
