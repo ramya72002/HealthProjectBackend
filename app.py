@@ -140,6 +140,7 @@ def upload_content():
     try:
         # Get the data from the request
         data = request.get_json()
+        app.logger.debug(f"Received data: {data}")
 
         # Extracting values from the JSON body
         email = data.get('email')
@@ -155,11 +156,14 @@ def upload_content():
         # Validate date_time format (ISO 8601)
         try:
             datetime.fromisoformat(date_time)
-        except ValueError:
+            app.logger.debug(f"Valid date_time: {date_time}")
+        except ValueError as ve:
+            app.logger.error(f"Invalid date_time format: {ve}")
             return jsonify({"success": False, "message": "Invalid date format. Use ISO 8601."}), 400
 
         # Find the user by email
         user = users_collection.find_one({"email": email})
+        app.logger.debug(f"User found: {user}")
         if not user:
             return jsonify({"success": False, "message": "Email not registered."}), 400
 
@@ -172,17 +176,18 @@ def upload_content():
         }
 
         # Update the user's uploads using $push
-        users_collection.update_one(
+        update_result = users_collection.update_one(
             {"email": email},
             {"$push": {"uploads": new_upload}}
         )
+        app.logger.debug(f"Update result: {update_result.raw_result}")
 
         return jsonify({"success": True, "message": "Upload added successfully.", "upload": new_upload}), 200
 
     except Exception as e:
-        # Log the exception
-        app.logger.error(f"Error in upload_content: {e}")
-        return jsonify({"success": False, "message": "An error occurred while processing the request."}), 500
+        import traceback
+        app.logger.error(f"Error in upload_content: {traceback.format_exc()}")
+        return jsonify({"success": False, "message": "An error occurred while processing the request.", "error": str(e)}), 500
 
 @app.route('/signup', methods=['POST'])
 def signup():
