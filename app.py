@@ -1,16 +1,18 @@
-import re;
-from flask import Flask, jsonify, request
+import re
+from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
 from pymongo import MongoClient
 from dotenv import load_dotenv
 import os
 import pytz
-import random,ssl
+import random
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
+import boto3
+from flask import redirect, url_for
 
 app = Flask(__name__)
 CORS(app)
@@ -27,6 +29,17 @@ client = MongoClient(mongo_uri)
 db = client.HealthLocker
 users_collection = db.users
 
+# AWS S3 settings
+AWS_ACCESS_KEY_ID = "AKIASSMTHSBNLSUCKDVO"
+AWS_SECRET_ACCESS_KEY = "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"
+S3_BUCKET = "health-locker"
+
+# Initialize the S3 client
+s3 = boto3.client(
+    's3',
+    aws_access_key_id=AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=AWS_SECRET_ACCESS_KEY
+)
 
 def send_otp_email(email, otp):
     try:
@@ -61,35 +74,48 @@ def generate_otp():
 @app.route('/')
 def home():
     return "Hello, Flask on Vercel!"
-#appregister
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+    
+    file = request.files['file']
+
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+    
+    try:
+        # Upload the file to S3
+        s3.upload_fileobj(file, S3_BUCKET, file.filename)
+
+        # Construct the public URL
+        object_url = f"https://{S3_BUCKET}.s3.amazonaws.com/{file.filename}"
+
+        return jsonify({"image_url": object_url}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route("/register", methods=["POST"])
 def register():
-    # Get the user data from the request
     data = request.get_json()
-
-    # Extracting values from the JSON body
     name = data.get('name')
     email = data.get('email')
     password = data.get('password')
 
-    # Basic validation
     if not name or not email or not password:
         return jsonify({"success": False, "message": "All fields are required."}), 400
 
-    # Validate email format
     email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
     if not re.match(email_regex, email):
         return jsonify({"success": False, "message": "Invalid email format."}), 400
-    
-    # Check if the user already exists in the database
+
     existing_user = users_collection.find_one({"email": email})
     if existing_user:
         return jsonify({"success": False, "message": "Email already registered."}), 400
-    
-    # Hash the password
+
     hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
 
-    # Create a new user document
     new_user = {
         "name": name,
         "email": email,
@@ -97,40 +123,31 @@ def register():
         "created_at": datetime.datetime.utcnow()
     }
 
-    # Insert the new user into the database
     users_collection.insert_one(new_user)
 
     return jsonify({"success": True, "message": "User registered successfully."}), 201
 
-
 @app.route("/login", methods=["POST"])
 def login():
-    # Get the user data from the request
     data = request.get_json()
-
-    # Extracting values from the JSON body
     email = data.get('email')
     password = data.get('password')
 
-    # Basic validation
     if not email or not password:
         return jsonify({"success": False, "message": "Email and password are required."}), 400
 
-    # Check if the user exists in the database
     user = users_collection.find_one({"email": email})
     if not user:
         return jsonify({"success": False, "message": "Email not registered."}), 400
 
-    # Check if the password matches
     if not check_password_hash(user['password'], password):
         return jsonify({"success": False, "message": "Incorrect password."}), 400
 
-    # Remove sensitive data from the response
     user_data = {
         "id": str(user['_id']),
         "name": user['name'],
         "email": user['email'],
-        "created_at": user.get('created_at')  # Include other non-sensitive fields if necessary
+        "created_at": user.get('created_at')
     }
 
     return jsonify({"success": True, "message": "Login successful.", "user": user_data}), 200
@@ -138,47 +155,35 @@ def login():
 @app.route("/uploads", methods=["POST"])
 def upload_content():
     try:
-        # Get the data from the request
         data = request.get_json()
-        app.logger.debug(f"Received data: {data}")
-
-        # Extracting values from the JSON body
         email = data.get('email')
         image_url = data.get('image_url')
         title = data.get('title')
         category = data.get('category')
         date_time = data.get('date_time')
 
-        # Basic validation
         if not all([email, image_url, title, category, date_time]):
             return jsonify({"success": False, "message": "All fields are required."}), 400
 
-        # Find the user by email
         user = users_collection.find_one({"email": email})
-        app.logger.debug(f"User found: {user}")
         if not user:
             return jsonify({"success": False, "message": "Email not registered."}), 400
 
-        # Prepare the new upload record
         new_upload = {
             "image_url": image_url,
             "title": title,
             "category": category,
-            "date_time": str(date_time)  # Treat date_time as a string
+            "date_time": str(date_time)
         }
 
-        # Update the user's uploads using $push
         update_result = users_collection.update_one(
             {"email": email},
             {"$push": {"uploads": new_upload}}
         )
-        app.logger.debug(f"Update result: {update_result.raw_result}")
 
         return jsonify({"success": True, "message": "Upload added successfully.", "upload": new_upload}), 200
 
     except Exception as e:
-        import traceback
-        app.logger.error(f"Error in upload_content: {traceback.format_exc()}")
         return jsonify({"success": False, "message": "An error occurred while processing the request.", "error": str(e)}), 500
 
 @app.route('/signup', methods=['POST'])
