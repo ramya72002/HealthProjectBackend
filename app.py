@@ -137,46 +137,52 @@ def login():
 
 @app.route("/uploads", methods=["POST"])
 def upload_content():
-    # Get the data from the request
-    data = request.get_json()
+    try:
+        # Get the data from the request
+        data = request.get_json()
 
-    # Extracting values from the JSON body
-    email = data.get('email')
-    image_url = data.get('image_url')
-    title = data.get('title')
-    category = data.get('category')
-    date_time = data.get('date_time')
+        # Extracting values from the JSON body
+        email = data.get('email')
+        image_url = data.get('image_url')
+        title = data.get('title')
+        category = data.get('category')
+        date_time = data.get('date_time')
 
-    # Basic validation
-    if not all([email, image_url, title, category, date_time]):
-        return jsonify({"success": False, "message": "All fields are required."}), 400
+        # Basic validation
+        if not all([email, image_url, title, category, date_time]):
+            return jsonify({"success": False, "message": "All fields are required."}), 400
 
-    # Find the user by email
-    user = users_collection.find_one({"email": email})
-    if not user:
-        return jsonify({"success": False, "message": "Email not registered."}), 400
+        # Validate date_time format (ISO 8601)
+        try:
+            datetime.fromisoformat(date_time)
+        except ValueError:
+            return jsonify({"success": False, "message": "Invalid date format. Use ISO 8601."}), 400
 
-    # Check if 'uploads' field exists, initialize it if not
-    if 'uploads' not in user or not isinstance(user['uploads'], list):
-        user['uploads'] = []
+        # Find the user by email
+        user = users_collection.find_one({"email": email})
+        if not user:
+            return jsonify({"success": False, "message": "Email not registered."}), 400
 
-    # Add the new record to the 'uploads' list
-    new_upload = {
-        "image_url": image_url,
-        "title": title,
-        "category": category,
-        "date_time": date_time
-    }
-    user['uploads'].append(new_upload)
+        # Prepare the new upload record
+        new_upload = {
+            "image_url": image_url,
+            "title": title,
+            "category": category,
+            "date_time": date_time
+        }
 
-    # Update the user's document in the database
-    users_collection.update_one(
-        {"email": email},
-        {"$set": {"uploads": user['uploads']}}
-    )
+        # Update the user's uploads using $push
+        users_collection.update_one(
+            {"email": email},
+            {"$push": {"uploads": new_upload}}
+        )
 
-    return jsonify({"success": True, "message": "Upload added successfully.", "uploads": user['uploads']}), 200
+        return jsonify({"success": True, "message": "Upload added successfully.", "upload": new_upload}), 200
 
+    except Exception as e:
+        # Log the exception
+        app.logger.error(f"Error in upload_content: {e}")
+        return jsonify({"success": False, "message": "An error occurred while processing the request."}), 500
 
 @app.route('/signup', methods=['POST'])
 def signup():
