@@ -153,14 +153,6 @@ def upload_content():
         if not all([email, image_url, title, category, date_time]):
             return jsonify({"success": False, "message": "All fields are required."}), 400
 
-        # Validate date_time format (ISO 8601)
-        try:
-            datetime.fromisoformat(date_time)
-            app.logger.debug(f"Valid date_time: {date_time}")
-        except ValueError as ve:
-            app.logger.error(f"Invalid date_time format: {ve}")
-            return jsonify({"success": False, "message": "Invalid date format. Use ISO 8601."}), 400
-
         # Find the user by email
         user = users_collection.find_one({"email": email})
         app.logger.debug(f"User found: {user}")
@@ -172,7 +164,7 @@ def upload_content():
             "image_url": image_url,
             "title": title,
             "category": category,
-            "date_time": date_time
+            "date_time": str(date_time)  # Treat date_time as a string
         }
 
         # Update the user's uploads using $push
