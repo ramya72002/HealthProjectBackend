@@ -338,5 +338,21 @@ def get_records():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/get_uploaded_records', methods=['GET'])
+def get_records_records():
+    try:
+        email = request.args.get('email')  # Get email from query params
+
+        # Fetch the user by email
+        user = users_collection.find_one({'email': email}, {'_id': 0, 'uploads': 1})
+
+        if user and 'uploads' in user:
+            return jsonify({'uploads': user['uploads']}), 200
+        else:
+            return jsonify({'error': 'No records found for this user.'}), 404
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=80)
