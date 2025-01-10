@@ -30,9 +30,9 @@ db = client.HealthLocker
 users_collection = db.users
 
 # AWS S3 settings
-AWS_ACCESS_KEY_ID = "AKIASSMTHSBNLSUCKDVO"
-AWS_SECRET_ACCESS_KEY = "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"
-S3_BUCKET = "health-locker"
+AWS_ACCESS_KEY_ID =  os.getenv('AWS_ACCESS_KEY_ID') 
+AWS_SECRET_ACCESS_KEY =  os.getenv('AWS_SECRET_ACCESS_KEY') 
+S3_BUCKET =  os.getenv('AWS_BUCKET_NAME') 
 
 # Initialize the S3 client
 s3 = boto3.client(
