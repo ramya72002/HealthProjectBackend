@@ -3,6 +3,7 @@ from flask import Flask, jsonify, request, render_template
 from flask_cors import CORS
 from pymongo import MongoClient
 from dotenv import load_dotenv
+import uuid
 import os
 import pytz
 import random
@@ -85,17 +86,20 @@ def upload_file():
         return jsonify({'error': 'No selected file'}), 400
     
     try:
-        # Upload the file to S3
-        s3.upload_fileobj(file, S3_BUCKET, file.filename)
+        # Generate a unique filename by appending a UUID to the original filename
+        extension = os.path.splitext(file.filename)[1]  # Get the file extension
+        unique_filename = f"{uuid.uuid4()}{extension}"
+
+        # Upload the file to S3 with the unique filename
+        s3.upload_fileobj(file, S3_BUCKET, unique_filename)
 
         # Construct the public URL
-        object_url = f"https://{S3_BUCKET}.s3.amazonaws.com/{file.filename}"
+        object_url = f"https://{S3_BUCKET}.s3.amazonaws.com/{unique_filename}"
 
         return jsonify({"image_url": object_url}), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
 @app.route("/register", methods=["POST"])
 def register():
     data = request.get_json()
