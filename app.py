@@ -135,6 +135,49 @@ def login():
 
     return jsonify({"success": True, "message": "Login successful.", "user": user_data}), 200
 
+@app.route("/uploads", methods=["POST"])
+def upload_content():
+    # Get the data from the request
+    data = request.get_json()
+
+    # Extracting values from the JSON body
+    email = data.get('email')
+    image_url = data.get('image_url')
+    title = data.get('title')
+    category = data.get('category')
+    date_time = data.get('date_time')
+
+    # Basic validation
+    if not all([email, image_url, title, category, date_time]):
+        return jsonify({"success": False, "message": "All fields are required."}), 400
+
+    # Find the user by email
+    user = users_collection.find_one({"email": email})
+    if not user:
+        return jsonify({"success": False, "message": "Email not registered."}), 400
+
+    # Check if 'uploads' field exists, initialize it if not
+    if 'uploads' not in user or not isinstance(user['uploads'], list):
+        user['uploads'] = []
+
+    # Add the new record to the 'uploads' list
+    new_upload = {
+        "image_url": image_url,
+        "title": title,
+        "category": category,
+        "date_time": date_time
+    }
+    user['uploads'].append(new_upload)
+
+    # Update the user's document in the database
+    users_collection.update_one(
+        {"email": email},
+        {"$set": {"uploads": user['uploads']}}
+    )
+
+    return jsonify({"success": True, "message": "Upload added successfully.", "uploads": user['uploads']}), 200
+
+
 @app.route('/signup', methods=['POST'])
 def signup():
     try:
