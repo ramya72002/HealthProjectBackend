@@ -23,7 +23,7 @@ load_dotenv()
 EMAIL_ADDRESS = os.getenv('EMAIL_USER')  # Your email from environment variable
 EMAIL_PASSWORD = os.getenv('EMAIL_PASS')  # Your email password from environment variable
 
-# Get the MongoDB URI from the environment variable
+# Get the MongoDB URI from the environment variable 
 mongo_uri = os.getenv('MONGO_URI')
 # MongoDB setup
 client = MongoClient(mongo_uri)
