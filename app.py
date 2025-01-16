@@ -30,7 +30,7 @@ client = MongoClient(mongo_uri)
 db = client.HealthLocker
 users_collection = db.users
 
-# AWS S3 settings
+# AWS S3 settings 
 AWS_ACCESS_KEY_ID =  os.getenv('AWS_ACCESS_KEY_ID') 
 AWS_SECRET_ACCESS_KEY =  os.getenv('AWS_SECRET_ACCESS_KEY') 
 S3_BUCKET =  os.getenv('AWS_BUCKET_NAME') 
