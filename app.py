@@ -100,6 +100,41 @@ def upload_file():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/multi_upload', methods=['POST'])
+def multi_upload():
+    if 'files' not in request.files:
+        return jsonify({'error': 'No files part'}), 400
+
+    files = request.files.getlist('files')  # Retrieve all files in the 'files' field
+
+    if not files:
+        return jsonify({'error': 'No selected files'}), 400
+    
+    image_urls = []
+
+    try:
+        for file in files:
+            if file.filename == '':
+                return jsonify({'error': 'One or more files are empty'}), 400
+
+            # Generate a unique filename for each file
+            extension = os.path.splitext(file.filename)[1]
+            unique_filename = f"{uuid.uuid4()}{extension}"
+
+            # Upload each file to S3 with a unique filename
+            s3.upload_fileobj(file, S3_BUCKET, unique_filename)
+
+            # Construct the public URL for each uploaded file
+            object_url = f"https://{S3_BUCKET}.s3.amazonaws.com/{unique_filename}"
+            image_urls.append(object_url)
+
+        return jsonify({"image_urls": image_urls}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route("/register", methods=["POST"])
 def register():
     data = request.get_json()
