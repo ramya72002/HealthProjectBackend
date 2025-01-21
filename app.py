@@ -120,7 +120,11 @@ def register():
 
     hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
 
+    # Generate a unique user_id
+    user_id = str(uuid.uuid4())
+
     new_user = {
+        "user_id": user_id,
         "name": name,
         "email": email,
         "password": hashed_password,
@@ -129,7 +133,7 @@ def register():
 
     users_collection.insert_one(new_user)
 
-    return jsonify({"success": True, "message": "User registered successfully."}), 201
+    return jsonify({"success": True, "message": "User registered successfully.", "user_id": user_id}), 201
 
 @app.route("/login", methods=["POST"])
 def login():
@@ -149,6 +153,7 @@ def login():
 
     user_data = {
         "id": str(user['_id']),
+        "user_id":user["user_id"],
         "name": user['name'],
         "email": user['email'],
         "created_at": user.get('created_at')
