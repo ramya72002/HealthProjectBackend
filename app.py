@@ -230,6 +230,46 @@ def upload_content():
     except Exception as e:
         return jsonify({"success": False, "message": "An error occurred while processing the request.", "error": str(e)}), 500
 
+@app.route("/uploads_wrt_userId", methods=["POST"])
+def uploads_wrt_userId():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        image_urls = data.get('image_urls')  # Expecting a list of image URLs
+        title = data.get('title', '')  # Default to empty string if title is not provided
+        category = data.get('category', '')  # Default to empty string if category is not provided
+        date_time = data.get('date_time','')
+
+        if not all([user_id, image_urls]):
+            return jsonify({"success": False, "message": "User ID, image URLs, and date/time are required."}), 400
+
+        if not isinstance(image_urls, list):
+            return jsonify({"success": False, "message": "Image URLs should be a list."}), 400
+
+        user = users_collection.find_one({"user_id": user_id})
+        if not user:
+            return jsonify({"success": False, "message": "User not found."}), 400
+
+        new_uploads = [{
+            "image_url": image_url,
+            "title": title,
+            "category": category,
+            "date_time": str(date_time)
+        } for image_url in image_urls]
+
+        update_result = users_collection.update_one(
+            {"user_id": user_id},
+            {"$push": {"uploads": {"$each": new_uploads}}}
+        )
+
+        if update_result.matched_count == 0:
+            return jsonify({"success": False, "message": "Failed to update user uploads."}), 400
+
+        return jsonify({"success": True, "message": "Uploads added successfully.", "uploads": new_uploads}), 200
+
+    except Exception as e:
+        return jsonify({"success": False, "message": "An error occurred while processing the request.", "error": str(e)}), 500
+
 @app.route('/signup', methods=['POST'])
 def signup():
     try:
