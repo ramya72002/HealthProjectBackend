@@ -270,6 +270,38 @@ def uploads_wrt_userId():
     except Exception as e:
         return jsonify({"success": False, "message": "An error occurred while processing the request.", "error": str(e)}), 500
 
+
+@app.route("/update_uploads_t&c", methods=["PUT"])
+def update_uploads_t_c():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        image_url = data.get('image_url')  # Single image URL for the update
+        title = data.get('title', '')  # New title to be updated
+        category = data.get('category', '')  # New category to be updated
+
+        if not all([user_id, image_url, title, category]):
+            return jsonify({"success": False, "message": "User ID, image URL, title, and category are required."}), 400
+
+        # Find the user and check if the image exists in their uploads
+        user = users_collection.find_one({"user_id": user_id, "uploads.image_url": image_url})
+        if not user:
+            return jsonify({"success": False, "message": "User or image not found."}), 404
+
+        # Update the title and category for the specific image
+        update_result = users_collection.update_one(
+            {"user_id": user_id, "uploads.image_url": image_url},
+            {"$set": {"uploads.$.title": title, "uploads.$.category": category}}
+        )
+
+        if update_result.matched_count == 0:
+            return jsonify({"success": False, "message": "Failed to update the upload details."}), 400
+
+        return jsonify({"success": True, "message": "Upload details updated successfully."}), 200
+
+    except Exception as e:
+        return jsonify({"success": False, "message": "An error occurred while processing the request.", "error": str(e)}), 500
+
 @app.route('/signup', methods=['POST'])
 def signup():
     try:
