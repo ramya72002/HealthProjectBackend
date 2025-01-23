@@ -465,7 +465,7 @@ def get_records_records():
         if user and 'uploads' in user:
             return jsonify({'uploads': user['uploads']}), 200
         else:
-            return jsonify({'error': 'No records found for this user.'}), 404
+            return jsonify({'error': 'No records found for this user.'}), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
