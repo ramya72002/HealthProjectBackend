@@ -270,6 +270,52 @@ def uploads_wrt_userId():
     except Exception as e:
         return jsonify({"success": False, "message": "An error occurred while processing the request.", "error": str(e)}), 500
 
+@app.route("/medications_wrt_userId", methods=["POST"])
+def medications_wrt_userId():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        medication_name = data.get('medication_name')
+        frequency = data.get('frequency')
+        schedule = data.get('schedule')  # List of schedule times
+        start_date = data.get('start_date')
+        end_date = data.get('end_date')
+        count = data.get('count', None)  # For "Every x days" frequency
+        selected_days = data.get('selected_days', {})  # For "Day of the week" frequency
+        selected_dates = data.get('selected_dates', [])  # For "Day of the month" frequency
+
+        if not all([user_id, medication_name, frequency, schedule, start_date, end_date]):
+            return jsonify({"success": False, "message": "User ID, medication name, frequency, schedule, start date, and end date are required."}), 400
+
+        user = users_collection.find_one({"user_id": user_id})
+        if not user:
+            return jsonify({"success": False, "message": "User not found."}), 400
+
+        # Create the medication record
+        medication_data = {
+            "medication_name": medication_name,
+            "frequency": frequency,
+            "schedule": schedule,
+            "start_date": start_date,
+            "end_date": end_date,
+            "count": count,
+            "selected_days": selected_days,
+            "selected_dates": selected_dates
+        }
+
+        # Add the medication data to the user's record
+        update_result = users_collection.update_one(
+            {"user_id": user_id},
+            {"$push": {"medications": medication_data}}  # Assuming 'medications' field in user document
+        )
+
+        if update_result.matched_count == 0:
+            return jsonify({"success": False, "message": "Failed to add medication."}), 400
+
+        return jsonify({"success": True, "message": "Medication added successfully.", "medication": medication_data}), 200
+
+    except Exception as e:
+        return jsonify({"success": False, "message": "An error occurred while processing the request.", "error": str(e)}), 500
 
 @app.route("/update_uploads_t&c", methods=["PUT"])
 def update_uploads_t_c():
