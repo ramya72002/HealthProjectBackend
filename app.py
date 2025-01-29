@@ -317,6 +317,26 @@ def medications_wrt_userId():
     except Exception as e:
         return jsonify({"success": False, "message": "An error occurred while processing the request.", "error": str(e)}), 500
 
+@app.route("/get_medications_wrt_userId", methods=["POST"])
+def get_medications_wrt_userId():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+
+        if not user_id:
+            return jsonify({"success": False, "message": "User ID is required."}), 400
+
+        user = users_collection.find_one({"user_id": user_id}, {"_id": 0, "medications": 1})
+        if not user:
+            return jsonify({"success": False, "message": "User not found."}), 400
+
+        medications = user.get("medications", [])
+
+        return jsonify({"success": True, "message": "Medications retrieved successfully.", "medications": medications}), 200
+
+    except Exception as e:
+        return jsonify({"success": False, "message": "An error occurred while processing the request.", "error": str(e)}), 500
+
 @app.route("/update_uploads_t&c", methods=["PUT"])
 def update_uploads_t_c():
     try:
