@@ -270,7 +270,6 @@ def uploads_wrt_userId():
     except Exception as e:
         return jsonify({"success": False, "message": "An error occurred while processing the request.", "error": str(e)}), 500
 
-import random
 
 @app.route("/medications_wrt_userId", methods=["POST"])
 def medications_wrt_userId():
