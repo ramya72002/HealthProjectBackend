@@ -270,6 +270,8 @@ def uploads_wrt_userId():
     except Exception as e:
         return jsonify({"success": False, "message": "An error occurred while processing the request.", "error": str(e)}), 500
 
+import random
+
 @app.route("/medications_wrt_userId", methods=["POST"])
 def medications_wrt_userId():
     try:
@@ -291,8 +293,23 @@ def medications_wrt_userId():
         if not user:
             return jsonify({"success": False, "message": "User not found."}), 400
 
+        # Generate a unique 6-digit ID
+        def generate_unique_id():
+            while True:
+                # Generate a random 6-digit number
+                medication_id = random.randint(100000, 999999)
+                # Check if the ID already exists in the user's medications
+                existing_medication = users_collection.find_one(
+                    {"user_id": user_id, "medications.medication_id": medication_id}
+                )
+                if not existing_medication:
+                    return medication_id
+
+        medication_id = generate_unique_id()
+
         # Create the medication record
         medication_data = {
+            "medication_id": medication_id,  # Add the unique medication ID
             "medication_name": medication_name,
             "frequency": frequency,
             "schedule": schedule,
@@ -316,6 +333,36 @@ def medications_wrt_userId():
 
     except Exception as e:
         return jsonify({"success": False, "message": "An error occurred while processing the request.", "error": str(e)}), 500
+
+@app.route("/delete_medication_wrt_id", methods=["POST"])
+def delete_medication_id():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        medication_id = data.get('medication_id')
+
+        if not all([user_id, medication_id]):
+            return jsonify({"success": False, "message": "User ID and medication ID are required."}), 400
+
+        # Find the user and the medication to be deleted
+        user = users_collection.find_one({"user_id": user_id})
+        if not user:
+            return jsonify({"success": False, "message": "User not found."}), 400
+
+        # Remove the medication from the user's medications list using medication_id
+        update_result = users_collection.update_one(
+            {"user_id": user_id},
+            {"$pull": {"medications": {"medication_id": medication_id}}}
+        )
+
+        if update_result.matched_count == 0:
+            return jsonify({"success": False, "message": "Failed to delete medication. Medication ID might not exist."}), 400
+
+        return jsonify({"success": True, "message": "Medication deleted successfully."}), 200
+
+    except Exception as e:
+        return jsonify({"success": False, "message": "An error occurred while processing the request.", "error": str(e)}), 500
+
 
 @app.route("/get_medications_wrt_userId", methods=["POST"])
 def get_medications_wrt_userId():
