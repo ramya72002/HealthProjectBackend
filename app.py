@@ -75,6 +75,11 @@ def generate_otp():
 @app.route('/')
 def home():
     return "Hello, Flask on Vercel!"
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
@@ -84,19 +89,18 @@ def upload_file():
 
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
+
+    # Validate file type
+    if not allowed_file(file.filename):
+        return jsonify({'error': 'File type not allowed. Only images and PDFs are accepted.'}), 400
     
     try:
-        # Generate a unique filename by appending a UUID to the original filename
-        extension = os.path.splitext(file.filename)[1]  # Get the file extension
+        extension = os.path.splitext(file.filename)[1]
         unique_filename = f"{uuid.uuid4()}{extension}"
-
-        # Upload the file to S3 with the unique filename
         s3.upload_fileobj(file, S3_BUCKET, unique_filename)
-
-        # Construct the public URL
         object_url = f"https://{S3_BUCKET}.s3.amazonaws.com/{unique_filename}"
 
-        return jsonify({"image_url": object_url}), 200
+        return jsonify({"file_url": object_url}), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
