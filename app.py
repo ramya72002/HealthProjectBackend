@@ -378,7 +378,7 @@ def get_medications_wrt_userId():
 
         user = users_collection.find_one({"user_id": user_id}, {"_id": 0, "medications": 1})
         if not user:
-            return jsonify({"success": False, "message": "User not found."}), 400
+            return jsonify({"success": True, "message": "medications not found."}), 200
 
         medications = user.get("medications", [])
 
