@@ -13,6 +13,10 @@ from email.mime.multipart import MIMEMultipart
 import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 import boto3
+from datetime import datetime, timedelta
+import secrets
+import random
+import smtplib
 from flask import redirect, url_for
 
 app = Flask(__name__)
@@ -29,6 +33,7 @@ mongo_uri = os.getenv('MONGO_URI')
 client = MongoClient(mongo_uri)
 db = client.HealthLocker
 users_collection = db.users
+password_reset_tokens_collection=db.password_reset_tokens
 
 # AWS S3 settings 
 AWS_ACCESS_KEY_ID =  os.getenv('AWS_ACCESS_KEY_ID') 
@@ -199,6 +204,57 @@ def login():
     }
 
     return jsonify({"success": True, "message": "Login successful.", "user": user_data}), 200
+
+
+
+@app.route('/forgot-password', methods=['POST'])
+def forgot_password():
+    data = request.json
+    email = data.get('email')
+
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+
+    # Check if the user exists
+    user = users_collection.find_one({"email": email})
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    # Generate a unique reset token
+    reset_token = secrets.token_urlsafe(32)
+    expiration_time = datetime.utcnow() + timedelta(hours=1)  # Token expires in 1 hour
+
+    # Save the token in the database
+    password_reset_tokens_collection.insert_one({
+        "email": email,
+        "token": reset_token,
+        "expires_at": expiration_time
+    })
+
+    # Send the reset link to the user's email
+    reset_link = f"https://bcc-facility-rental.vercel.app/forgotpasswrod?token={reset_token}"
+    email_body = f"""
+    <p>You requested a password reset. Click the link below to reset your password:</p>
+    <p><a href="{reset_link}">Reset Password</a></p>
+    <p>This link will expire in 1 hour.</p>
+    """
+
+    try:
+        # Send email
+        msg = MIMEText(email_body, "html")
+        msg["Subject"] = "Password Reset Request"
+        msg["From"] = "nvisionwebsiterequest@gmail.com"
+        msg["To"] = email
+
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls()
+            server.login("nvisionwebsiterequest@gmail.com", "qulz fnvb yfjh phgu")
+            server.sendmail("nvisionwebsiterequest@gmail.com", [email], msg.as_string())
+
+        return jsonify({"message": "Password reset link sent to your email"}), 200
+    except Exception as e:
+        return jsonify({"error": "Failed to send email", "details": str(e)}), 500
+
 
 @app.route("/uploads", methods=["POST"])
 def upload_content():
