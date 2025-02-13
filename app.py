@@ -254,7 +254,6 @@ def forgot_password():
         return jsonify({"message": "Password reset link sent to your email"}), 200
     except Exception as e:
         return jsonify({"error": "Failed to send email", "details": str(e)}), 500
-
 @app.route('/reset-password', methods=['POST'])
 def reset_password():
     data = request.json
@@ -274,17 +273,19 @@ def reset_password():
     if datetime.utcnow() > reset_record["expires_at"]:
         return jsonify({"error": "Token has expired"}), 400
 
-    # Update the user's password
+    # Hash the new password before saving it
+    hashed_password = generate_password_hash(new_password, method='pbkdf2:sha256')
+
+    # Update the user's password in the database
     users_collection.update_one(
         {"email": reset_record["email"]},
-        {"$set": {"password": new_password}}
+        {"$set": {"password": hashed_password}}
     )
 
     # Delete the used token
     password_reset_tokens_collection.delete_one({"token": token})
 
     return jsonify({"message": "Password reset successfully"}), 200
-
 @app.route("/uploads", methods=["POST"])
 def upload_content():
     try:
