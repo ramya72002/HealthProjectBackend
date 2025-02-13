@@ -255,6 +255,35 @@ def forgot_password():
     except Exception as e:
         return jsonify({"error": "Failed to send email", "details": str(e)}), 500
 
+@app.route('/reset-password', methods=['POST'])
+def reset_password():
+    data = request.json
+    token = data.get('token')
+    new_password = data.get('new_password')
+
+    if not token or not new_password:
+        return jsonify({"error": "Token and new password are required"}), 400
+
+    # Find the token in the database
+    reset_record = password_reset_tokens_collection.find_one({"token": token})
+
+    if not reset_record:
+        return jsonify({"error": "Invalid or expired token"}), 400
+
+    # Check if the token has expired
+    if datetime.utcnow() > reset_record["expires_at"]:
+        return jsonify({"error": "Token has expired"}), 400
+
+    # Update the user's password
+    users_collection.update_one(
+        {"email": reset_record["email"]},
+        {"$set": {"password": new_password}}
+    )
+
+    # Delete the used token
+    password_reset_tokens_collection.delete_one({"token": token})
+
+    return jsonify({"message": "Password reset successfully"}), 200
 
 @app.route("/uploads", methods=["POST"])
 def upload_content():
