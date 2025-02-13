@@ -232,7 +232,7 @@ def forgot_password():
     })
 
     # Send the reset link to the user's email
-    reset_link = f"https://bcc-facility-rental.vercel.app/forgotpasswrod?token={reset_token}"
+    reset_link = f"https://health-locker-website.vercel.app/auth/forgotpassword?token={reset_token}"
     email_body = f"""
     <p>You requested a password reset. Click the link below to reset your password:</p>
     <p><a href="{reset_link}">Reset Password</a></p>
